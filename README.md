@@ -1,304 +1,320 @@
-# QQbot - 群消息爬取与分析工具
+# NapcatBot
 
-## 项目简介
-
-QQbot 是一个基于 NcatBot 框架开发的 QQ 群消息爬取与分析工具。它能够自动监听并保存指定群的消息到本地数据库，支持历史消息获取、定时备份、多群监听等功能。后续将加入消息分析、统计报表等高级功能。
-
-## 文档
-
-- NcatBot 官方文档: https://docs.ncatbot.xyz/
-- NcatBot 项目地址: https://github.com/NapNeko/NcatBot
+NapcatBot 是一个基于 NcatBot 框架的 QQ 群消息爬取与分析工具，支持插件扩展，可以实现群消息统计、活跃度分析等功能。
 
 ## 项目架构
 
+项目采用模块化设计，主要包含以下部分：
+
+### 目录结构
+
 ```
-QQbot/
-├── main.py                # 主程序入口
+NapcatBot/
+├── src/                  # 源代码目录
+│   ├── core/             # 核心模块
+│   │   ├── __init__.py   # 核心模块初始化文件
+│   │   ├── auth.py       # 权限管理模块
+│   │   ├── command_manager.py  # 命令管理模块
+│   │   ├── event_manager.py    # 事件管理模块
+│   │   └── plugin_manager.py   # 插件管理模块
+│   └── utils/            # 工具模块
+│       ├── __init__.py   # 工具模块初始化文件
+│       ├── config.py     # 配置管理模块
+│       ├── database.py   # 数据库模块
+│       ├── logger.py     # 日志模块
+│       ├── message_parser.py  # 消息解析模块
+│       └── queue.py      # 消息队列模块
+├── plugins/              # 插件目录
+│   ├── example/          # 示例插件
+│   │   └── __init__.py   # 插件入口文件
+│   └── stats/            # 统计插件
+│       └── __init__.py   # 插件入口文件
+├── data/                 # 数据目录
+│   └── database.db       # 数据库文件
+├── logs/                 # 日志目录
 ├── config.json           # 配置文件
-├── messages.db          # SQLite 数据库
-├── bot.log             # 日志文件
-├── src/               # 源代码目录
-│   ├── core/        # 核心模块
-│   │   ├── __init__.py
-│   │   ├── bot.py      # 主机器人类
-│   │   └── config.py   # 配置管理
-│   ├── handlers/    # 事件处理模块
-│   │   ├── __init__.py
-│   │   ├── group_handler.py    # 群消息处理
-│   │   └── private_handler.py  # 私聊消息处理
-│   ├── services/   # 服务模块
-│   │   ├── __init__.py
-│   │   ├── group_service.py    # 群组服务
-│   │   ├── message_service.py  # 消息服务
-│   │   └── backup_service.py   # 备份服务
-│   ├── utils/      # 工具模块
-│   │   ├── __init__.py
-│   │   ├── database.py         # 数据库操作
-│   │   └── message_parser.py   # 消息解析
-│   └── plugins/    # 插件目录
-│       └── analyzer/           # 消息分析插件
-├── data/          # 数据目录
-│   └── backups/   # 数据库备份
-└── logs/          # 日志目录
+├── main.py               # 主程序入口
+└── README.md             # 项目说明文件
 ```
 
-## 核心功能模块
+### 核心模块
 
-1. **消息监听与存储**
-   - 实时监听群消息
-   - 定期获取历史消息
-   - 消息解析与存储
+- **权限管理模块 (auth.py)**: 管理用户权限和命令权限
+- **命令管理模块 (command_manager.py)**: 注册和处理命令
+- **事件管理模块 (event_manager.py)**: 处理和分发事件
+- **插件管理模块 (plugin_manager.py)**: 加载和管理插件
 
-2. **数据管理**
-   - SQLite 数据库设计
-   - 数据备份与恢复
-   - 数据去重与完整性检查
+### 工具模块
 
-3. **群信息管理**
-   - 获取群基本信息
-   - 获取群成员列表
-   - 群信息定期更新
+- **配置管理模块 (config.py)**: 加载和管理配置文件
+- **数据库模块 (database.py)**: 管理数据库连接和操作
+- **日志模块 (logger.py)**: 提供日志功能
+- **消息解析模块 (message_parser.py)**: 解析和处理消息
+- **消息队列模块 (queue.py)**: 控制消息发送频率
 
-4. **消息分析**（计划中）
-   - 活跃度分析
-   - 关键词统计
-   - 互动关系图谱
+### 数据库结构
 
-5. **用户界面**（计划中）
-   - 命令行控制界面
-   - Web 管理界面
+NapcatBot 使用 SQLite 数据库存储数据，主要包含以下表：
+
+#### 群信息表 (group_info)
+
+```sql
+CREATE TABLE IF NOT EXISTS group_info (
+    group_id INTEGER PRIMARY KEY,
+    group_name TEXT,
+    member_count INTEGER,
+    max_member_count INTEGER,
+    owner_id INTEGER,
+    admin_count INTEGER,
+    last_active_time INTEGER,
+    join_time INTEGER,
+    created_time INTEGER
+)
+```
+
+#### 群成员表 (group_members)
+
+```sql
+CREATE TABLE IF NOT EXISTS group_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER,
+    user_id INTEGER,
+    nickname TEXT,
+    card TEXT,
+    sex TEXT,
+    age INTEGER,
+    area TEXT,
+    join_time INTEGER,
+    last_sent_time INTEGER,
+    level TEXT,
+    role TEXT,
+    unfriendly INTEGER DEFAULT 0,
+    title TEXT,
+    title_expire_time INTEGER,
+    card_changeable INTEGER,
+    shut_up_timestamp INTEGER,
+    UNIQUE(group_id, user_id),
+    FOREIGN KEY(group_id) REFERENCES group_info(group_id) ON DELETE CASCADE
+)
+```
+
+#### 消息表 (messages)
+
+```sql
+CREATE TABLE IF NOT EXISTS messages (
+    message_id TEXT PRIMARY KEY,
+    group_id INTEGER,
+    user_id INTEGER,
+    message_type TEXT,
+    content TEXT,
+    raw_message TEXT,
+    time INTEGER,
+    message_seq INTEGER,
+    message_data TEXT,
+    FOREIGN KEY(group_id) REFERENCES group_info(group_id) ON DELETE CASCADE
+)
+```
 
 ## 安装与配置
 
 ### 环境要求
-- Python 3.10+
+
+- Python 3.8 或更高版本
 - NcatBot 框架
-- SQLite3
 
 ### 安装步骤
 
-1. 安装 NcatBot 框架：
-   ```shell
-   pip install ncatbot -U -i https://mirrors.aliyun.com/pypi/simple
-   ```
+1. 克隆仓库
 
-2. 克隆或下载本项目：
-   ```shell
-   git clone https://github.com/yourusername/QQbot.git
-   cd QQbot
-   ```
+```bash
+git clone https://github.com/yourusername/NapcatBot.git
+cd NapcatBot
+```
 
-3. 创建配置文件 `config.json`：
-   ```json
-   {
-     "bot_uin": "你的QQ号",
-     "target_groups": [群号1, 群号2, ...],
-     "database_path": "messages.db",
-     "backup_interval": 3600,
-     "history_fetch_interval": 1800,
-     "ws_uri": "ws://localhost:3001",
-     "token": "napcat",
-     "max_retries": 3
-   }
-   ```
+2. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+3. 创建配置文件
+
+创建 `config.json` 文件，内容如下：
+
+```json
+{
+    "bot": {
+        "account": "你的QQ号",
+        "password": "你的密码",
+        "protocol": 2
+    },
+    "plugins": {
+        "disabled": []
+    },
+    "commands": {
+        "prefixes": ["/", "#"]
+    },
+    "database": {
+        "path": "data/database.db"
+    },
+    "log": {
+        "level": "INFO",
+        "dir": "logs"
+    }
+}
+```
 
 ## 使用方法
 
-### 基本使用
+### 启动机器人
 
-1. 启动 NapCat 服务器（如果尚未启动）：
-   - 通过 NapCat 官方客户端启动
-   - 确保 WebSocket 服务已开启，默认地址为 `ws://localhost:3001`
+```bash
+python main.py
+```
 
-2. 运行机器人：
-   ```shell
-   python main.py
-   ```
+### 命令列表
 
-3. 机器人将自动连接到 NapCat 服务器，并开始监听配置的群消息
+NapcatBot 内置了一些命令，可以通过在群聊或私聊中发送命令来使用：
 
-### 命令控制
+- `/stats [天数=7]` - 查看群聊统计信息
+- `/rank [天数=7] [数量=10]` - 查看群聊发言排行
+- `/mystat [天数=7]` - 查看个人统计信息
+- `/hello [名字]` - 打招呼命令
+- `/echo <内容>` - 回显命令
 
-机器人支持通过私聊命令进行控制：
+## 插件开发
 
-- `状态` - 查看机器人当前状态
-- `备份` - 手动触发数据库备份
-- `更新群信息` - 手动更新群信息和成员列表
-- `获取历史消息` - 手动获取历史消息
-- `分析 群号 [天数]` - 分析指定群的活跃度
-- `插件列表` - 查看已加载的插件
+NapcatBot 支持插件扩展，你可以开发自己的插件来扩展功能。
 
-## 数据库结构
+### 创建插件
 
-### 群信息表 (group_info)
-- group_id: 群号（主键）
-- group_name: 群名称
-- member_count: 成员数量
-- last_update: 最后更新时间
+1. 在 `plugins` 目录下创建一个新的目录，例如 `myplugin`
+2. 在该目录下创建 `__init__.py` 文件
+3. 在 `__init__.py` 文件中创建一个继承自 `Plugin` 的类
 
-### 群成员表 (group_members)
-- group_id: 群号
-- user_id: 用户QQ号
-- nickname: 昵称
-- card: 群名片
-- role: 角色（管理员/成员）
-- join_time: 加入时间
-- last_update: 最后更新时间
+```python
+from ncatbot.core.plugin import Plugin
+from ncatbot.core.event import Event
+from ncatbot.core.message import GroupMessage, PrivateMessage
+from ncatbot.core.element import MessageChain, Plain
+from src.core import PermissionLevel, get_command_manager
 
-### 消息表 (messages)
-- message_id: 消息ID（主键）
-- group_id: 群号
-- user_id: 发送者QQ号
-- message_type: 消息类型
-- content: 消息内容（JSON格式）
-- raw_message: 原始消息文本
-- time: 消息时间戳
-- message_seq: 消息序号
-- message_data: 完整消息数据（JSON格式）
+class MyPlugin(Plugin):
+    """我的插件类"""
+    
+    def __init__(self):
+        """初始化插件"""
+        super().__init__()
+        self.name = "myplugin"
+        self.version = "1.0.0"
+        self.description = "我的插件"
+        self.author = "Your Name"
+        
+        # 注册命令
+        cmd_mgr = get_command_manager()
+        cmd_mgr.register_command(
+            name="mycmd",
+            handler=self.cmd_mycmd,
+            permission=PermissionLevel.NORMAL,
+            description="我的命令",
+            usage="/mycmd [参数]"
+        )
+        
+        self.logger.info(f"插件 {self.name} v{self.version} 已加载")
+    
+    async def on_enable(self):
+        """插件启用时调用"""
+        self.logger.info(f"插件 {self.name} 已启用")
+        return True
+    
+    async def on_disable(self):
+        """插件禁用时调用"""
+        self.logger.info(f"插件 {self.name} 已禁用")
+        return True
+    
+    async def on_group_message(self, event: GroupMessage):
+        """处理群消息事件"""
+        # 这里可以处理所有群消息
+        pass
+    
+    async def cmd_mycmd(self, event: Event, args: str):
+        """处理 mycmd 命令"""
+        await event.reply(MessageChain([Plain(f"你输入的参数是：{args}")]))
+```
 
-## 开发计划
+### 插件生命周期
 
-### 已完成
-- [x] 基础框架搭建
-- [x] 消息监听与存储
-- [x] 群信息获取
-- [x] 数据库设计
-- [x] 定时备份功能
-- [x] 代码重构与模块化
+- `__init__`: 插件初始化时调用
+- `on_enable`: 插件启用时调用
+- `on_disable`: 插件禁用时调用
+- `on_group_message`: 收到群消息时调用
+- `on_private_message`: 收到私聊消息时调用
 
-### 进行中
-- [ ] 消息解析优化
-- [ ] 历史消息获取完善
-- [ ] 数据去重机制
+### 事件处理
 
-### 计划中 - 核心功能（优先级高）
-- [ ] 权限系统实现
-  - [ ] 基于 AuthManager 的权限控制框架
-  - [ ] 群组级别权限管理
-  - [ ] 用户级别权限管理
-  - [ ] 命令级别权限管理
-  - [ ] 权限配置文件的自动加载与保存
-- [ ] 消息队列系统
-  - [ ] 基于 MessageQueue 的消息发送队列
-  - [ ] 消息发送频率限制与随机延迟
-  - [ ] 消息优先级处理
-  - [ ] 消息发送失败重试机制
-- [ ] 日志系统优化
-  - [ ] 分级日志（DEBUG/INFO/WARNING/ERROR）
-  - [ ] 日志自动轮转与保留时间设置
-  - [ ] 自定义日志过滤器
-  - [ ] 特定功能日志分离（如数据库操作日志）
-- [ ] 数据库操作优化
-  - [ ] 基于 SQLiteDB 的数据库操作封装
-  - [ ] 数据库连接池管理
-  - [ ] 数据库事务支持
-  - [ ] 数据库查询优化
+插件可以通过实现特定的方法来处理事件，例如：
 
-### 计划中 - 功能扩展（优先级中）
-- [ ] 消息处理工具集
-  - [ ] 消息段处理工具（图片、语音、文本等）
-  - [ ] 模板渲染图片生成
-  - [ ] 多媒体资源管理
-- [ ] 插件系统增强
-  - [ ] 插件热加载机制
-  - [ ] 插件依赖管理
-  - [ ] 插件配置界面
-  - [ ] 插件权限集成
-- [ ] 数据分析功能
-  - [ ] 群活跃度分析与可视化
-  - [ ] 用户行为分析
-  - [ ] 关键词提取与话题分析
-  - [ ] 消息情感分析
-- [ ] 自动化管理功能
-  - [ ] 违规消息自动检测
-  - [ ] 群成员行为监控
-  - [ ] 自动欢迎新成员
-  - [ ] 定时任务系统
+- `on_group_message(event: GroupMessage)`: 处理群消息事件
+- `on_private_message(event: PrivateMessage)`: 处理私聊消息事件
+- `on_group_member_increase(event: GroupMemberIncreaseEvent)`: 处理群成员增加事件
+- `on_group_member_decrease(event: GroupMemberDecreaseEvent)`: 处理群成员减少事件
 
-### 计划中 - 用户界面（优先级中）
-- [ ] Web 管理面板
-  - [ ] 实时监控面板
-  - [ ] 数据可视化展示
-  - [ ] 配置管理界面
-  - [ ] 用户权限管理界面
-- [ ] API 系统
-  - [ ] RESTful API 接口设计
-  - [ ] WebSocket 实时推送
-  - [ ] API 权限控制
-  - [ ] API 文档自动生成
+### 命令注册
 
-### 计划中 - 高级功能（优先级低）
-- [ ] 智能对话系统
-  - [ ] 基于 GPT 的智能回复
-  - [ ] 自定义对话模板
-  - [ ] 上下文对话管理
-  - [ ] 多轮对话支持
-- [ ] 多媒体处理增强
-  - [ ] 图片识别与处理
-  - [ ] 语音识别与合成
-  - [ ] 视频处理与分析
-- [ ] 群管理工具集
-  - [ ] 群公告管理
-  - [ ] 群文件管理
-  - [ ] 群投票系统
-  - [ ] 群活动组织工具
+插件可以通过命令管理器注册命令：
 
-### 计划中 - 运维功能（优先级中）
-- [ ] 监控与报警系统
-  - [ ] 性能监控（CPU、内存、网络）
-  - [ ] 异常监控与自动报警
-  - [ ] 服务状态监控
-- [ ] 备份系统增强
-  - [ ] 增量备份机制
-  - [ ] 自动恢复功能
-  - [ ] 多备份位置支持
-  - [ ] 备份加密
-- [ ] 安全系统
-  - [ ] 访问控制与认证
-  - [ ] 数据加密存储
-  - [ ] 防攻击机制
+```python
+cmd_mgr = get_command_manager()
+cmd_mgr.register_command(
+    name="mycmd",
+    handler=self.cmd_mycmd,
+    permission=PermissionLevel.NORMAL,
+    description="我的命令",
+    usage="/mycmd [参数]",
+    aliases=["mc"]  # 命令别名
+)
+```
 
-### 计划中 - 部署与测试（优先级中）
-- [ ] 测试系统
-  - [ ] 单元测试框架
-  - [ ] 集成测试
-  - [ ] 性能测试
-  - [ ] 自动化测试
-- [ ] 部署优化
-  - [ ] Docker 容器化
-  - [ ] CI/CD 流程
-  - [ ] 多环境配置
-  - [ ] 集群部署支持
+## 常见问题
 
-### 实施路线图
-1. **第一阶段（1-2个月）**：核心功能实现
-   - 权限系统实现
-   - 消息队列系统
-   - 日志系统优化
-   - 数据库操作优化
+### 如何添加新的插件？
 
-2. **第二阶段（2-3个月）**：功能扩展
-   - 消息处理工具集
-   - 插件系统增强
-   - 数据分析功能
-   - 自动化管理功能
+将插件目录放入 `plugins` 目录下，重启机器人即可。
 
-3. **第三阶段（3-4个月）**：用户界面与运维
-   - Web 管理面板
-   - API 系统
-   - 监控与报警系统
-   - 备份系统增强
+### 如何禁用插件？
 
-4. **第四阶段（4-6个月）**：高级功能与优化
-   - 智能对话系统
-   - 多媒体处理增强
-   - 群管理工具集
-   - 测试与部署优化
+在配置文件中的 `plugins.disabled` 数组中添加插件名称，例如：
+
+```json
+{
+    "plugins": {
+        "disabled": ["example"]
+    }
+}
+```
+
+### 如何修改命令前缀？
+
+在配置文件中的 `commands.prefixes` 数组中修改，例如：
+
+```json
+{
+    "commands": {
+        "prefixes": ["/", "#", "!"]
+    }
+}
+```
 
 ## 贡献指南
 
-欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
+欢迎贡献代码或提出建议，请遵循以下步骤：
+
+1. Fork 本仓库
+2. 创建你的特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交你的更改 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 打开一个 Pull Request
 
 ## 许可证
 
-MIT License
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
