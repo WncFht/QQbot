@@ -1,6 +1,10 @@
 """
 示例插件，展示插件开发的基本结构
 """
+from .plugin import ExamplePlugin
+
+__all__ = ["ExamplePlugin"]
+
 from ncatbot.core.plugin import Plugin
 from ncatbot.core.event import Event
 from ncatbot.core.message import GroupMessage, PrivateMessage

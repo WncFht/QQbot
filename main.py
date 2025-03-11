@@ -8,9 +8,13 @@ import os
 import sys
 import asyncio
 import signal
-from ncatbot import NcatBot
-from src.utils import get_logger, setup_logger, get_config
+import logging
+
+from src.utils.logger import setup_logger, get_logger
+from src.utils.config import get_config
+from src.utils.database import init_database, close_all_connections, backup
 from src.core import get_plugin_manager, get_event_manager, get_command_manager
+from src.core.bot.bot import Bot
 
 # 设置日志
 setup_logger(level="INFO", log_dir="logs")
@@ -24,75 +28,72 @@ plugin_manager = get_plugin_manager()
 event_manager = get_event_manager()
 command_manager = get_command_manager()
 
-async def init_bot():
-    """初始化机器人"""
+# 获取机器人实例
+bot = Bot()
+
+async def init():
+    """初始化"""
     try:
         # 创建数据目录
         os.makedirs("data", exist_ok=True)
         os.makedirs("logs", exist_ok=True)
         os.makedirs("plugins", exist_ok=True)
         
+        # 初始化数据库
+        init_database()
+        
         # 加载插件
-        plugin_manager.load_all_plugins()
+        await plugin_manager.load_all_plugins()
         
-        # 创建机器人实例
-        bot = NcatBot(config_path="config.json")
+        # 初始化机器人
+        await bot.init()
         
-        # 注册事件处理器
-        @bot.on_message
-        async def handle_message(event):
-            # 先尝试作为命令处理
-            command_result = await command_manager.handle_message(event)
-            if command_result:
-                return
-            
-            # 如果不是命令，则触发事件
-            await event_manager.emit(event)
-        
-        # 启动机器人
-        await bot.start()
-        
-        return bot
+        logger.info("初始化完成")
+        return True
     except Exception as e:
-        logger.error(f"初始化机器人失败: {e}", exc_info=True)
-        return None
+        logger.error(f"初始化失败: {e}", exc_info=True)
+        return False
 
-async def shutdown_bot(bot):
-    """关闭机器人"""
+async def shutdown():
+    """关闭"""
     try:
         # 卸载所有插件
-        plugin_manager.unload_all_plugins()
+        await plugin_manager.unload_all_plugins()
         
-        # 关闭机器人
-        if bot:
-            await bot.stop()
+        # 停止机器人
+        await bot.stop()
         
-        logger.info("机器人已关闭")
+        # 备份数据库
+        backup()
+        
+        # 关闭数据库连接
+        close_all_connections()
+        
+        logger.info("关闭完成")
     except Exception as e:
-        logger.error(f"关闭机器人失败: {e}", exc_info=True)
+        logger.error(f"关闭失败: {e}", exc_info=True)
 
 def signal_handler(sig, frame):
     """信号处理函数"""
     logger.info(f"接收到信号 {sig}，准备关闭...")
-    if 'bot' in globals() and bot:
-        asyncio.create_task(shutdown_bot(bot))
-    else:
-        sys.exit(0)
+    asyncio.create_task(shutdown())
 
 async def main():
     """主函数"""
-    global bot
-    
     # 注册信号处理
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    # 初始化机器人
+    # 初始化
     logger.info("正在启动 NapcatBot...")
-    bot = await init_bot()
-    
-    if not bot:
+    if not await init():
         logger.error("启动失败")
+        return
+    
+    # 启动机器人
+    if not await bot.start():
+        logger.error("启动机器人失败")
+        await shutdown()
         return
     
     logger.info("NapcatBot 已启动")
@@ -104,8 +105,8 @@ async def main():
     except asyncio.CancelledError:
         logger.info("主循环被取消")
     finally:
-        # 关闭机器人
-        await shutdown_bot(bot)
+        # 关闭
+        await shutdown()
 
 if __name__ == "__main__":
     try:

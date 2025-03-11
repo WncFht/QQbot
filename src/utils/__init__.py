@@ -6,7 +6,7 @@ from .database import Database
 from .message_parser import MessageParser
 from .logger import get_logger, setup_logger
 from .config import ConfigManager, get_config
-from .queue import MessageQueue, RequestQueue
+from ncatbot.core.queue import MessageQueue, RequestQueue
 
 __all__ = [
     'Database',

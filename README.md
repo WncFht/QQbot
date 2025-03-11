@@ -184,63 +184,7 @@ NapcatBot 内置了一些命令，可以通过在群聊或私聊中发送命令�
 
 ## 插件开发
 
-NapcatBot 支持插件扩展，你可以开发自己的插件来扩展功能。
-
-### 创建插件
-
-1. 在 `plugins` 目录下创建一个新的目录，例如 `myplugin`
-2. 在该目录下创建 `__init__.py` 文件
-3. 在 `__init__.py` 文件中创建一个继承自 `Plugin` 的类
-
-```python
-from ncatbot.core.plugin import Plugin
-from ncatbot.core.event import Event
-from ncatbot.core.message import GroupMessage, PrivateMessage
-from ncatbot.core.element import MessageChain, Plain
-from src.core import PermissionLevel, get_command_manager
-
-class MyPlugin(Plugin):
-    """我的插件类"""
-    
-    def __init__(self):
-        """初始化插件"""
-        super().__init__()
-        self.name = "myplugin"
-        self.version = "1.0.0"
-        self.description = "我的插件"
-        self.author = "Your Name"
-        
-        # 注册命令
-        cmd_mgr = get_command_manager()
-        cmd_mgr.register_command(
-            name="mycmd",
-            handler=self.cmd_mycmd,
-            permission=PermissionLevel.NORMAL,
-            description="我的命令",
-            usage="/mycmd [参数]"
-        )
-        
-        self.logger.info(f"插件 {self.name} v{self.version} 已加载")
-    
-    async def on_enable(self):
-        """插件启用时调用"""
-        self.logger.info(f"插件 {self.name} 已启用")
-        return True
-    
-    async def on_disable(self):
-        """插件禁用时调用"""
-        self.logger.info(f"插件 {self.name} 已禁用")
-        return True
-    
-    async def on_group_message(self, event: GroupMessage):
-        """处理群消息事件"""
-        # 这里可以处理所有群消息
-        pass
-    
-    async def cmd_mycmd(self, event: Event, args: str):
-        """处理 mycmd 命令"""
-        await event.reply(MessageChain([Plain(f"你输入的参数是：{args}")]))
-```
+[插件开发](插件开发.md)
 
 ### 插件生命周期
 
